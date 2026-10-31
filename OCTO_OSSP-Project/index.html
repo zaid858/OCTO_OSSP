@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linux IPC Visual Simulator | Pipes & FIFOs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/css/main.css" />
+</head>
+<body>
+
+  <!-- Header & Navigation -->
+  <header class="app-header">
+    <div class="brand-container">
+      <div class="brand-icon">IPC</div>
+      <div>
+        <div class="brand-title">Linux IPC Simulator</div>
+        <div class="brand-subtitle">OSSP Project Laboratory</div>
+      </div>
+    </div>
+
+    <nav class="main-nav" id="mainNav">
+      <button class="nav-btn active" data-tab="overview">Overview</button>
+      <button class="nav-btn" data-tab="pipe-sim">Pipe Simulator</button>
+      <button class="nav-btn" data-tab="fifo-sim">FIFO Simulator</button>
+      <button class="nav-btn" data-tab="pipe-vs-fifo">Pipe vs FIFO</button>
+      <button class="nav-btn" data-tab="system-calls">System Calls</button>
+      <button class="nav-btn" data-tab="real-world">Real-World Applications</button>
+      <button class="nav-btn" data-tab="about">About</button>
+    </nav>
+  </header>
+
+  <!-- Application Container -->
+  <main class="app-container">
+
+    <!-- Toast Notification for Validation -->
+    <div class="toast-msg" id="toastMsg">Please enter a valid message!</div>
+
+    <!-- 1. OVERVIEW SECTION -->
+    <section class="tab-content active" id="overview">
+      <div class="section-header">
+        <h1>Linux Inter-Process Communication</h1>
+        <p>Explore Anonymous Pipes and Named FIFOs through an interactive visual simulator paired with actual Linux system call implementations.</p>
+      </div>
+
+      <div class="glass-card" style="margin-bottom: 2rem; text-align: center; padding: 2.5rem 1.5rem;">
+        <h3 style="font-size: 1.3rem; margin-bottom: 1rem; color: #a5f3fc;">Interactive IPC Model</h3>
+        <p style="color: var(--text-muted); max-width: 800px; margin: 0 auto 2rem auto;">
+          "Inter-Process Communication (IPC) allows Linux processes to exchange data and coordinate their activities. This project demonstrates Linux Pipes and Named FIFOs through an interactive process-to-process communication simulator."
+        </p>
+
+        <!-- Basic Architecture Diagram -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2.5rem;">
+          <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid var(--cyan-accent); padding: 1rem 1.5rem; border-radius: 8px; font-weight: 700; font-family: var(--font-mono); color: #fff;">
+            PROCESS A<br><span style="font-size: 0.75rem; color: var(--cyan-accent);">Sender / Writer</span>
+          </div>
+          <div style="font-size: 1.5rem; color: var(--cyan-accent);">➔</div>
+          <div style="background: linear-gradient(135deg, rgba(56,189,248,0.1), rgba(59,130,246,0.1)); border: 2px dashed var(--cyan-accent); padding: 1rem 2rem; border-radius: 20px; font-weight: 700; font-family: var(--font-mono); color: #a5f3fc;">
+            IPC CHANNEL<br><span style="font-size: 0.75rem; color: var(--text-muted);">Pipe / FIFO Buffer</span>
+          </div>
+          <div style="font-size: 1.5rem; color: var(--cyan-accent);">➔</div>
+          <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid var(--blue-accent); padding: 1rem 1.5rem; border-radius: 8px; font-weight: 700; font-family: var(--font-mono); color: #fff;">
+            PROCESS B<br><span style="font-size: 0.75rem; color: var(--blue-accent);">Receiver / Reader</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btnStartSim" style="font-size: 1rem; padding: 0.85rem 2rem;">
+          🚀 Start FIFO Simulation
+        </button>
+      </div>
+
+      <h2 style="font-size: 1.4rem; margin-bottom: 1rem; color: #fff;">Core IPC Concepts</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="glass-card">
+          <h4 style="color: var(--cyan-accent); margin-bottom: 0.5rem; font-size: 1.1rem;">Anonymous Pipe</h4>
+          <p style="font-size: 0.9rem; color: var(--text-muted);">Unidirectional data channel created in memory using system call <span class="syscall-badge">pipe()</span>. Shared strictly between parent and child processes created via <span class="syscall-badge">fork()</span>.</p>
+        </div>
+        <div class="glass-card">
+          <h4 style="color: var(--purple-accent); margin-bottom: 0.5rem; font-size: 1.1rem;">Named FIFO</h4>
+          <p style="font-size: 0.9rem; color: var(--text-muted);">Special file created in the filesystem using <span class="syscall-badge">mkfifo()</span>. Allows independent, unrelated processes to communicate using standard file system paths.</p>
+        </div>
+        <div class="glass-card">
+          <h4 style="color: var(--emerald-success); margin-bottom: 0.5rem; font-size: 1.1rem;">write() Operation</h4>
+          <p style="font-size: 0.9rem; color: var(--text-muted);">Transfers raw data bytes from process memory into the kernel IPC buffer. Blocks if the pipe/FIFO buffer is full.</p>
+        </div>
+        <div class="glass-card">
+          <h4 style="color: var(--amber-warning); margin-bottom: 0.5rem; font-size: 1.1rem;">read() Operation</h4>
+          <p style="font-size: 0.9rem; color: var(--text-muted);">Retrieves data bytes from the IPC buffer into process memory. Blocks if no data is currently available in the buffer.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. PIPE SIMULATOR SECTION -->
+    <section class="tab-content" id="pipe-sim">
+      <div class="section-header">
+        <h1>Anonymous Pipe Simulator</h1>
+        <p>Visualizing unidirectional data stream between Parent & Child processes created via <span class="syscall-badge">fork()</span> and connected via <span class="syscall-badge">pipe()</span>.</p>
+      </div>
+
+      <!-- Pipe Simulator Interactive Card -->
+      <div class="glass-card" style="margin-bottom: 1.5rem;">
+        <div class="simulator-grid">
+          
+          <!-- PROCESS A (Producer) -->
+          <div class="process-card glass-card" id="pipeProcessA">
+            <div class="process-header">
+              <div class="process-title">
+                <span>Process A</span>
+                <span class="process-role">Producer</span>
+              </div>
+              <div class="process-status-indicator" id="pipeIndicatorA"></div>
+            </div>
+            <div class="process-body">
+              <div class="form-group">
+                <label class="form-label" for="pipeInput">Enter Message:</label>
+                <input type="text" id="pipeInput" class="custom-input" placeholder="e.g. Hello Linux IPC" value="Hello World from Process A" />
+              </div>
+              <button class="btn btn-primary" id="btnPipeSend">
+                <span>✉️ SEND DATA</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- PIPE CHANNEL VISUALIZER -->
+          <div class="channel-container" id="pipeChannelArea">
+            <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--cyan-accent); margin-bottom: 0.5rem; text-align: center;">
+              KERNEL IPC BUFFER (64KB)
+            </div>
+            
+            <div class="channel-pipe" id="pipeChannel">
+              <span class="channel-pipe-label">Anonymous Pipe [fd[1] ➔ fd[0]]</span>
+              <!-- Animated packet inserted dynamically -->
+              <div class="data-packet" id="pipePacket">Hello World</div>
+            </div>
+
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted);">
+              <span>write(fd[1])</span>
+              <span>➔</span>
+              <span>read(fd[0])</span>
+            </div>
+          </div>
+
+          <!-- PROCESS B (Consumer) -->
+          <div class="process-card glass-card" id="pipeProcessB">
+            <div class="process-header">
+              <div class="process-title">
+                <span>Process B</span>
+                <span class="process-role">Consumer</span>
+              </div>
+              <div class="process-status-indicator" id="pipeIndicatorB"></div>
+            </div>
+            <div class="process-body">
+              <div class="form-group">
+                <label class="form-label">Received Message:</label>
+                <div class="received-display" id="pipeOutput">
+                  <span style="color: var(--text-dim); font-style: italic;">Awaiting transmission...</span>
+                </div>
+              </div>
+              <button class="btn btn-secondary" id="btnPipeReset">
+                <span>🔄 RESET</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Status Timeline Bar -->
+        <div class="status-timeline" id="pipeTimeline">
+          <div class="timeline-step active" id="pipeStep1">1. IDLE</div>
+          <div class="timeline-step" id="pipeStep2">2. WRITING (write)</div>
+          <div class="timeline-step" id="pipeStep3">3. TRANSMITTING</div>
+          <div class="timeline-step" id="pipeStep4">4. READING (read)</div>
+          <div class="timeline-step" id="pipeStep5">5. RECEIVED ✓</div>
+        </div>
+      </div>
+
+      <!-- Expandable C Code Accordion -->
+      <div class="code-accordion">
+        <div class="accordion-header" id="pipeCodeHeader">
+          <span>💻 View Representative Linux C Code (pipe & fork)</span>
+          <span id="pipeCodeArrow">▼</span>
+        </div>
+        <div class="accordion-content" id="pipeCodeContent">
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Note: The browser is visually simulating the execution. In Linux, the real C implementation utilizes system calls as shown below:
+          </p>
+          <pre class="code-block"><code>// Anonymous Pipe C Implementation snippet
+int fd[2];
+pipe(fd); // fd[0] = read end, fd[1] = write end
+
+pid_t pid = fork();
+
+if (pid > 0) { // Process A (Parent / Producer)
+    close(fd[0]); // Close read end
+    char message[] = "Hello World from Process A";
+    write(fd[1], message, strlen(message) + 1);
+    close(fd[1]);
+} else if (pid == 0) { // Process B (Child / Consumer)
+    close(fd[1]); // Close write end
+    char buffer[100];
+    read(fd[0], buffer, sizeof(buffer));
+    printf("Process B Received: %s\n", buffer);
+    close(fd[0]);
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. FIFO SIMULATOR SECTION -->
+    <section class="tab-content" id="fifo-sim">
+      <div class="section-header">
+        <h1>Named FIFO Simulator</h1>
+        <p>Demonstrating Inter-Process Communication between independent processes via single shared Linux named pipe <span class="syscall-badge">linux-implementation/myfifo</span>.</p>
+      </div>
+
+      <div class="simulator-grid" style="grid-template-columns: 1.1fr 1.2fr 1.1fr;">
+        
+        <!-- PROCESS A (WRITER) -->
+        <div class="process-card glass-card" id="fifoProcessA">
+          <div class="process-header">
+            <div class="process-title">
+              <span>PROCESS A</span>
+              <span class="process-role" style="background: rgba(129, 140, 248, 0.2); color: #c7d2fe; border-color: rgba(129, 140, 248, 0.4);">WRITER</span>
+            </div>
+            <div class="process-status-indicator" id="fifoIndicatorA"></div>
+          </div>
+          <div class="process-body">
+            <div class="form-group">
+              <label class="form-label" for="fifoInput">Enter Message:</label>
+              <input type="text" id="fifoInput" class="custom-input" placeholder="e.g. Operating Systems Project" value="Operating Systems Project" />
+            </div>
+            <button class="btn btn-primary" id="btnFifoWrite" style="background: linear-gradient(135deg, var(--purple-accent), var(--blue-accent)); box-shadow: 0 4px 15px rgba(129, 140, 248, 0.4);">
+              <span>⚡ WRITE TO FIFO</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- FIFO NAMED PIPE BUFFER CONTAINER -->
+        <div class="channel-container">
+          <div class="fifo-buffer-box" id="fifoBuffer">
+            <div class="fifo-path-name">📁 linux-implementation/myfifo (Shared Named FIFO)</div>
+            <div style="font-size: 0.72rem; color: #94a3b8; font-family: var(--font-mono); margin-bottom: 0.25rem;">
+              📄 In-Flight Display: linux-implementation/myfifo_display.txt
+            </div>
+            <div id="fifoDisplayLiveTag" style="font-size: 0.73rem; font-family: var(--font-mono); margin-bottom: 0.4rem; padding: 2px 8px; border-radius: 4px; display: inline-block; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(148, 163, 184, 0.2);">
+              <span>Disk File: </span><span id="fifoDisplayFileLiveStatus" style="color: var(--emerald-success); font-weight: bold;">[ EMPTY (0 bytes) ]</span>
+            </div>
+            
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;" id="fifoStateLabel">
+              STATUS: READY
+            </div>
+
+            <!-- Queue Buffer Box -->
+            <div class="fifo-queue-content" id="fifoQueueArea">
+              <!-- Visual packet inside FIFO displayed here -->
+              <span style="font-size: 0.8rem; color: var(--text-dim); font-style: italic;" id="fifoEmptyNotice">[ No Data Queued ]</span>
+              <div class="data-packet" id="fifoPacket" style="position: relative; top: auto; left: auto; display: none;">📦 Text</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary" id="btnFifoReset" style="padding: 0.4rem 1rem; font-size: 0.8rem;">
+              🔄 RESET FIFO
+            </button>
+          </div>
+        </div>
+
+        <!-- PROCESS B (READER) -->
+        <div class="process-card glass-card" id="fifoProcessB">
+          <div class="process-header">
+            <div class="process-title">
+              <span>PROCESS B</span>
+              <span class="process-role" style="background: rgba(16, 185, 129, 0.2); color: #a7f3d0; border-color: rgba(16, 185, 129, 0.4);">READER</span>
+            </div>
+            <div class="process-status-indicator" id="fifoIndicatorB"></div>
+          </div>
+          <div class="process-body">
+            <div class="form-group">
+              <label class="form-label">Received Message:</label>
+              <div class="received-display" id="fifoOutput">
+                <span style="color: var(--text-dim); font-style: italic;">Awaiting FIFO message...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Linux System Call Activity Checklist -->
+      <div class="glass-card" style="margin-top: 1.5rem;">
+        <h4 style="color: var(--cyan-accent); margin-bottom: 1rem; font-size: 1.05rem; font-family: var(--font-mono);">
+          ⚡ Linux System-Call Execution Activity Log
+        </h4>
+        <div class="syscall-checklist" id="fifoChecklist">
+          <div class="checklist-item" id="chkSyscall1">
+            <div class="checklist-status-icon">1</div>
+            <div><span class="syscall-badge">lstat("linux-implementation/myfifo")</span> - Verified real Linux POSIX FIFO node (S_ISFIFO)</div>
+          </div>
+          <div class="checklist-item" id="chkSyscall2">
+            <div class="checklist-status-icon">2</div>
+            <div><span class="syscall-badge">open("linux-implementation/myfifo", O_WRONLY)</span> - Process A opens shared FIFO for writing</div>
+          </div>
+          <div class="checklist-item" id="chkSyscall3">
+            <div class="checklist-status-icon">3</div>
+            <div><span class="syscall-badge">write(fd, message, len)</span> - Transmits payload into FIFO & updates myfifo_display.txt</div>
+          </div>
+          <div class="checklist-item" id="chkSyscall4">
+            <div class="checklist-status-icon">4</div>
+            <div><span class="syscall-badge">open("linux-implementation/myfifo", O_RDONLY)</span> - Process B opens shared FIFO for reading</div>
+          </div>
+          <div class="checklist-item" id="chkSyscall5">
+            <div class="checklist-status-icon">5</div>
+            <div><span class="syscall-badge">read(fd, buffer, size)</span> - Process B receives payload from real Linux FIFO</div>
+          </div>
+          <div class="checklist-item" id="chkSyscall6">
+            <div class="checklist-status-icon">6</div>
+            <div><span class="syscall-badge">close(fd)</span> - Descriptors closed; myfifo persists in project directory</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expandable C Code Accordion -->
+      <div class="code-accordion">
+        <div class="accordion-header" id="fifoCodeHeader">
+          <span>💻 View Representative Linux C Code (fifo_common.h, open, write, read)</span>
+          <span id="fifoCodeArrow">▼</span>
+        </div>
+        <div class="accordion-content" id="fifoCodeContent">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <h5 style="color: var(--purple-accent); margin-bottom: 0.5rem;">Writer Process (fifo_writer.c)</h5>
+              <pre class="code-block"><code>// Process A - Writer
+ensure_fifo_exists("linux-implementation/myfifo", 0);
+update_display_file(msg); // myfifo_display.txt
+int fd = open("linux-implementation/myfifo", O_WRONLY);
+write(fd, msg, strlen(msg) + 1);
+close(fd);</code></pre>
+            </div>
+            <div>
+              <h5 style="color: var(--emerald-success); margin-bottom: 0.5rem;">Reader Process (fifo_reader.c)</h5>
+              <pre class="code-block"><code>// Process B - Reader
+int fd = open("linux-implementation/myfifo", O_RDONLY);
+char buffer[512];
+read(fd, buffer, sizeof(buffer));
+printf("Received: %s\n", buffer);
+append_to_history(buffer, "IPC");
+close(fd);
+clear_display_file(); // myfifo persists!</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 4. PIPE VS FIFO SECTION -->
+    <section class="tab-content" id="pipe-vs-fifo">
+      <div class="section-header">
+        <h1>Pipe vs FIFO Comparison</h1>
+        <p>Understanding when to use Anonymous Pipes vs Named FIFOs in Linux Systems Programming.</p>
+      </div>
+
+      <div class="glass-card" style="margin-bottom: 2rem;">
+        <div class="comparison-table-container">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Feature / Property</th>
+                <th>Anonymous Pipe</th>
+                <th>Named FIFO</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Channel Type</strong></td>
+                <td>Anonymous in-memory channel</td>
+                <td>Named special file in filesystem</td>
+              </tr>
+              <tr>
+                <td><strong>Process Relationship</strong></td>
+                <td>Strictly related processes (Parent-Child via <code>fork()</code>)</td>
+                <td>Completely independent, unrelated processes</td>
+              </tr>
+              <tr>
+                <td><strong>Creation System Call</strong></td>
+                <td><span class="syscall-badge">pipe(fd)</span></td>
+                <td><span class="syscall-badge">mkfifo(path, mode)</span></td>
+              </tr>
+              <tr>
+                <td><strong>Filesystem Pathname</strong></td>
+                <td>No filesystem entry / Anonymous descriptor</td>
+                <td>Has a distinct pathname (e.g. <code>linux-implementation/myfifo</code>)</td>
+              </tr>
+              <tr>
+                <td><strong>Persistence</strong></td>
+                <td>Exists only while descriptors remain open</td>
+                <td>Persists in filesystem until explicitly removed via <span class="syscall-badge">unlink()</span></td>
+              </tr>
+              <tr>
+                <td><strong>Opening Mechanism</strong></td>
+                <td>Inherited file descriptors after <code>fork()</code></td>
+                <td>Opened via standard <span class="syscall-badge">open()</span> call with <code>O_RDONLY</code> / <code>O_WRONLY</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3 style="color: #fff; margin-bottom: 1rem;">Structural Visual Comparison</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div class="glass-card">
+          <h4 style="color: var(--cyan-accent); margin-bottom: 0.75rem;">ANONYMOUS PIPE</h4>
+          <div style="background: #030712; padding: 1.25rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.85rem; color: #bae6fd; text-align: center;">
+            [ Parent Process A ] <br>
+            │ (fork)<br>
+            ▼<br>
+            [ Child Process B ]<br>
+            ▲ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; │<br>
+            └─── Anonymous Pipe ───┘
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <h4 style="color: var(--purple-accent); margin-bottom: 0.75rem;">NAMED FIFO</h4>
+          <div style="background: #030712; padding: 1.25rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.85rem; color: #c7d2fe; text-align: center;">
+            [ Independent Process A ] ➔ write()<br>
+            │<br>
+            ▼<br>
+            📁 Filesystem Path: <strong>linux-implementation/myfifo</strong><br>
+            │<br>
+            ▼<br>
+            [ Independent Process B ] ➔ read()
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. LINUX SYSTEM CALLS SECTION -->
+    <section class="tab-content" id="system-calls">
+      <div class="section-header">
+        <h1>Linux System Call Reference</h1>
+        <p>Key C system calls utilized in Linux Inter-Process Communication.</p>
+      </div>
+
+      <div class="syscall-grid">
+        
+        <div class="glass-card syscall-card">
+          <div class="func-name">fork()</div>
+          <div class="func-purpose">Creates a new child process by duplicating the calling parent process context.</div>
+          <div class="func-usage">Used in Pipe demo to spawn Process B as a child process sharing file descriptors.</div>
+        </div>
+
+        <div class="glass-card syscall-card">
+          <div class="func-name">pipe(int pipefd[2])</div>
+          <div class="func-purpose">Allocates an anonymous pipe channel; pipefd[0] is read end, pipefd[1] is write end.</div>
+          <div class="func-usage">Used in Anonymous Pipe demo before fork() to establish communication.</div>
+        </div>
+
+        <div class="glass-card syscall-card">
+          <div class="func-name">mkfifo(const char *path, mode_t mode)</div>
+          <div class="func-purpose">Creates a FIFO special file at the specified filesystem path with permission mode.</div>
+          <div class="func-usage">Used in FIFO demo to establish named communication file node.</div>
+        </div>
+
+        <div class="glass-card syscall-card">
+          <div class="func-name">open(const char *path, int flags)</div>
+          <div class="func-purpose">Opens a file or FIFO node for reading (O_RDONLY) or writing (O_WRONLY).</div>
+          <div class="func-usage">Used by separate processes to attach to a Named FIFO.</div>
+        </div>
+
+        <div class="glass-card syscall-card">
+          <div class="func-name">write(int fd, const void *buf, size_t count)</div>
+          <div class="func-purpose">Writes up to count bytes from buffer into the IPC channel file descriptor.</div>
+          <div class="func-usage">Transmits user payload from Process A into Pipe or FIFO.</div>
+        </div>
+
+        <div class="glass-card syscall-card">
+          <div class="func-name">read(int fd, void *buf, size_t count)</div>
+          <div class="func-purpose">Reads up to count bytes from the IPC channel into destination buffer memory.</div>
+          <div class="func-usage">Retrieves payload in Process B from Pipe or FIFO.</div>
+        </div>
+
+        <div class="glass-card syscall-card">
+          <div class="func-name">close(int fd)</div>
+          <div class="func-purpose">Deallocates a file descriptor so it no longer refers to any file/pipe channel.</div>
+          <div class="func-usage">Called after transmission to signal End-Of-File (EOF) and free system resources.</div>
+        </div>
+
+        <div class="glass-card syscall-card">
+          <div class="func-name">unlink(const char *pathname)</div>
+          <div class="func-purpose">Deletes a name from the filesystem; removes FIFO special file node.</div>
+          <div class="func-usage">Called by FIFO reader or cleanup code after IPC session completes.</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 6. REAL-WORLD APPLICATIONS SECTION -->
+    <section class="tab-content" id="real-world">
+      <div class="section-header">
+        <h1>Real-World Applications</h1>
+        <p>Exploring how inter-process and service communication concepts scale across modern operating systems and enterprise software platforms.</p>
+      </div>
+
+      <!-- Introduction Banner Card -->
+      <div class="glass-card" style="margin-bottom: 2rem; padding: 1.75rem;">
+        <p style="color: var(--text-main); margin-bottom: 1.25rem; font-size: 0.98rem; line-height: 1.6;">
+          Inter-Process Communication (IPC) is an important operating-system concept that enables processes and services to exchange data and coordinate their activities. Modern software systems use different communication mechanisms depending on their architecture and requirements. The applications below illustrate where process or service communication concepts are relevant in real-world systems.
+        </p>
+
+        <div style="background: rgba(3, 7, 18, 0.7); border-left: 4px solid var(--purple-accent); padding: 1rem 1.25rem; border-radius: var(--radius-sm);">
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0; line-height: 1.5;">
+            <strong style="color: #c7d2fe;">Note:</strong> The Pipe and FIFO mechanisms implemented in this project are Linux IPC mechanisms. The applications listed here are real-world examples of systems where process/service communication is relevant; this does not imply that every application specifically uses Linux <code>pipe()</code> or <code>mkfifo()</code>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Applications Grid (8 Cards) -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
+
+        <!-- 1. NGINX -->
+        <div class="glass-card app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-card-icon" style="background: rgba(16, 185, 129, 0.15); border-color: var(--emerald-success); color: var(--emerald-success);">
+                ⚡
+              </div>
+              <h3 class="app-card-title">NGINX</h3>
+            </div>
+            <p class="app-card-desc">
+              Uses a high-performance multi-process architecture where a master process coordinates worker processes via signal and inter-process channel communication.
+            </p>
+          </div>
+          <a href="https://nginx.org/" target="_blank" rel="noopener noreferrer" class="btn btn-primary app-card-btn">
+            Visit Website ➔
+          </a>
+        </div>
+
+        <!-- 2. Spotify -->
+        <div class="glass-card app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-card-icon" style="background: rgba(16, 185, 129, 0.15); border-color: var(--emerald-success); color: var(--emerald-success);">
+                🎵
+              </div>
+              <h3 class="app-card-title">Spotify</h3>
+            </div>
+            <p class="app-card-desc">
+              Relies on microservices and cross-process client communication streams to deliver real-time audio playback and playlist synchronization across devices.
+            </p>
+          </div>
+          <a href="https://www.spotify.com/" target="_blank" rel="noopener noreferrer" class="btn btn-primary app-card-btn">
+            Visit Website ➔
+          </a>
+        </div>
+
+        <!-- 3. YouTube -->
+        <div class="glass-card app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-card-icon" style="background: rgba(239, 68, 68, 0.15); border-color: var(--rose-danger); color: var(--rose-danger);">
+                ▶️
+              </div>
+              <h3 class="app-card-title">YouTube</h3>
+            </div>
+            <p class="app-card-desc">
+              Leverages distributed microservice pipelines and RPC process communication to handle high-throughput video encoding, chunking, and global streaming.
+            </p>
+          </div>
+          <a href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" class="btn btn-primary app-card-btn">
+            Visit Website ➔
+          </a>
+        </div>
+
+        <!-- 4. WhatsApp -->
+        <div class="glass-card app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-card-icon" style="background: rgba(16, 185, 129, 0.15); border-color: var(--emerald-success); color: var(--emerald-success);">
+                💬
+              </div>
+              <h3 class="app-card-title">WhatsApp</h3>
+            </div>
+            <p class="app-card-desc">
+              Utilizes background daemon processes, IPC message queues, and socket streams to synchronize encrypted real-time messages and media across clients.
+            </p>
+          </div>
+          <a href="https://www.whatsapp.com/" target="_blank" rel="noopener noreferrer" class="btn btn-primary app-card-btn">
+            Visit Website ➔
+          </a>
+        </div>
+
+        <!-- 5. Instagram -->
+        <div class="glass-card app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-card-icon" style="background: rgba(129, 140, 248, 0.15); border-color: var(--purple-accent); color: var(--purple-accent);">
+                📸
+              </div>
+              <h3 class="app-card-title">Instagram</h3>
+            </div>
+            <p class="app-card-desc">
+              Employs asynchronous task queues and backend microservices communicating continuously for background image/video processing and feed delivery.
+            </p>
+          </div>
+          <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" class="btn btn-primary app-card-btn">
+            Visit Website ➔
+          </a>
+        </div>
+
+        <!-- 6. Netflix -->
+        <div class="glass-card app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-card-icon" style="background: rgba(239, 68, 68, 0.15); border-color: var(--rose-danger); color: var(--rose-danger);">
+                🎬
+              </div>
+              <h3 class="app-card-title">Netflix</h3>
+            </div>
+            <p class="app-card-desc">
+              Operates thousands of microservices that exchange real-time telemetry, user data, and video segments via resilient inter-service communication.
+            </p>
+          </div>
+          <a href="https://www.netflix.com/" target="_blank" rel="noopener noreferrer" class="btn btn-primary app-card-btn">
+            Visit Website ➔
+          </a>
+        </div>
+
+        <!-- 7. Linux Shell / Command Pipelines -->
+        <div class="glass-card app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-card-icon" style="background: rgba(56, 189, 248, 0.15); border-color: var(--cyan-accent); color: var(--cyan-accent);">
+                🐧
+              </div>
+              <h3 class="app-card-title">Linux Shell Pipelines</h3>
+            </div>
+            <p class="app-card-desc">
+              Direct operating system application of Anonymous Pipes where CLI commands seamlessly connect standard stdout to stdin between concurrent process pairs.
+            </p>
+          </div>
+          <a href="https://www.linux.org/" target="_blank" rel="noopener noreferrer" class="btn btn-primary app-card-btn">
+            Visit Website ➔
+          </a>
+        </div>
+
+        <!-- 8. GitHub -->
+        <div class="glass-card app-card">
+          <div>
+            <div class="app-card-header">
+              <div class="app-card-icon" style="background: rgba(255, 255, 255, 0.15); border-color: #fff; color: #fff;">
+                🐙
+              </div>
+              <h3 class="app-card-title">GitHub</h3>
+            </div>
+            <p class="app-card-desc">
+              Uses distributed git service daemons and background worker processes exchanging data via IPC hooks and RPC channels to manage code repositories.
+            </p>
+          </div>
+          <a href="https://github.com/" target="_blank" rel="noopener noreferrer" class="btn btn-primary app-card-btn">
+            Visit Website ➔
+          </a>
+        </div>
+
+      </div>
+
+      <!-- Back to Simulator CTA -->
+      <div style="text-align: center; margin-top: 1rem; margin-bottom: 1.5rem;">
+        <button class="btn btn-secondary" id="btnBackToSim" style="font-size: 0.95rem; padding: 0.75rem 1.75rem;">
+          ← Back to IPC Simulator
+        </button>
+      </div>
+    </section>
+
+    <!-- 7. ABOUT PROJECT SECTION -->
+    <section class="tab-content" id="about">
+      <div class="section-header">
+        <h1>About Project</h1>
+        <p>Operating Systems & System Programming (OSSP) Coursework Project</p>
+      </div>
+
+      <div class="glass-card" style="max-width: 850px; margin: 0 auto;">
+        <h3 style="color: var(--cyan-accent); margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+          Project Metadata & Objectives
+        </h3>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; font-size: 0.95rem;">
+          <div><strong>Project Title:</strong> Linux IPC Using Pipes and FIFOs</div>
+          <div><strong>Course:</strong> Operating Systems & System Programming</div>
+          <div><strong>Implementation Language:</strong> C (Linux Native)</div>
+          <div><strong>Simulation Platform:</strong> Web (HTML5/CSS3/JS)</div>
+          <div><strong>Target OS:</strong> Linux / Ubuntu / WSL</div>
+          <div><strong>Developer:</strong> G Jashwanth Reddy</div>
+        </div>
+
+        <div style="background: rgba(3, 7, 18, 0.9); padding: 1.25rem; border-radius: 8px; border-left: 4px solid var(--cyan-accent); margin-bottom: 1.5rem;">
+          <h4 style="color: #fff; margin-bottom: 0.4rem;">Project Objective</h4>
+          <p style="font-size: 0.9rem; color: var(--text-muted);">
+            "To provide a clear, interactive visual demonstration and a complete production C implementation showing how Linux processes exchange data dynamically using Anonymous Pipes and Named FIFOs."
+          </p>
+        </div>
+
+        <div style="background: rgba(129, 140, 248, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(129, 140, 248, 0.3);">
+          <h5 style="color: #c7d2fe; margin-bottom: 0.25rem;">Technical Clarification</h5>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            The browser application serves as an educational visual simulator. Real Linux kernel system calls (<code>pipe</code>, <code>fork</code>, <code>mkfifo</code>, <code>open</code>, <code>read</code>, <code>write</code>) are compiled and executed in the standalone C implementation located in the <code>/linux-implementation</code> folder.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module" src="./src/js/main.js"></script>
+</body>
+</html>

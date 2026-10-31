@@ -1,0 +1,28 @@
+{
+  "name": "linux-ipc-pipes-fifos-simulator",
+  "version": "1.0.0",
+  "description": "Linux Inter-Process Communication (Pipes and FIFOs) Interactive Simulator & C Implementation",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "node server.js",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "ossp",
+    "operating-systems",
+    "ipc",
+    "linux",
+    "pipe",
+    "fifo",
+    "c",
+    "simulator"
+  ],
+  "author": "G Jashwanth Reddy",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^5.1.0"
+  }
+}
