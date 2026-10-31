@@ -1,0 +1,25 @@
+# Node dependencies & caches
+node_modules/
+dist/
+.vite/
+
+# Linux FIFO special filesystem node
+myfifo
+linux-implementation/myfifo
+
+# Session lock files & temporary runtime logs
+*.lock
+.fifo_*.lock
+linux-implementation/.fifo_*.lock
+linux-implementation/myfifo_display.txt
+*.log
+
+# Linux compiled binaries
+linux-implementation/fifo_reader
+linux-implementation/fifo_writer
+linux-implementation/pipe_demo
+*.o
+
+# OS metadata
+.DS_Store
+Thumbs.db
